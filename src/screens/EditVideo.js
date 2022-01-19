@@ -1,5 +1,5 @@
 import React from 'react';
-import {SafeAreaView, View, Text, TextInput} from 'react-native';
+import {SafeAreaView, View, Text, TextInput, TouchableOpacity} from 'react-native';
 import Video from 'react-native-video';
 import {ProcessingManager} from 'react-native-video-processing';
 import {bindActionCreators} from 'redux';
@@ -11,7 +11,9 @@ import Foundation from 'react-native-vector-icons/Foundation';
 import moment from 'moment';
 import Toast from 'react-native-easy-toast';
 import GlobalButton from '../components/GlobalButton';
-
+import Fontisto from 'react-native-vector-icons/dist/Fontisto';
+import * as color from '../constants/color';
+import RNFS from 'react-native-fs';
 class EditVideo extends React.Component {
   state = {
     name: '',
@@ -46,6 +48,82 @@ class EditVideo extends React.Component {
           backgroundColor="white"
           headingText="EDIT VIDEO"
         />
+          <TouchableOpacity
+                style={{
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  flex: 1,
+                  marginLeft: 2,
+                  margin: 30
+                }}
+                onPress={() => {
+                  console.log("Pressed")
+                  this.setState({loading: true});
+                  ImagePicker.launchImageLibrary(
+                    {
+                      storageOptions: {
+                        skipBackup: true,
+                        path: 'images',
+                      },
+                    },
+                    response => {
+                      if (response.didCancel) {
+                        this.setState({loading: false});
+                      } else if (response.error) {
+                        this.setState({loading: false});
+                      } else {
+                        let photoPath =
+                          RNFS.DocumentDirectoryPath + '/' + response.fileName;
+                        RNFS.moveFile(response.uri, photoPath)
+                          .then(() => {
+                            console.log('FILE WRITTEN!');
+                            RNPhotoEditor.Edit({
+                              path:
+                                RNFS.DocumentDirectoryPath +
+                                '/' +
+                                response.fileName,
+                              hiddenControls: ['save', 'sticker'],
+                              onDone: resp => {
+                                let photoPathResp =
+                                  Platform.OS === 'android'
+                                    ? 'file://' + resp
+                                    : 'file://' + resp;
+                                this.props.reduxActions.setPhoto(
+                                  this.props.navigation,
+                                  this.props.reduxState.photos,
+                                  photoPathResp,
+                                  () => {
+                                    this.setState({loading: false});
+                                  },
+                                );
+                              },
+                              onCancel: () => {
+                                this.setState({loading: false});
+                              },
+                            });
+                          })
+                          .catch(err => {
+                            this.setState({loading: false});
+                            console.log(err.message);
+                          });
+                      }
+                    },
+                  );
+                }}>
+                <Fontisto
+                  size={30}
+                  name="photograph"
+                  color={color.themeColor}
+                />
+                <Text
+                  style={{
+                    color: color.themeColor,
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                  }}>
+                  Choose Photo From Gallery for thumbnail
+                </Text>
+              </TouchableOpacity>
         <TextInput
           style={{
             borderWidth: 1,
@@ -173,6 +251,7 @@ class EditVideo extends React.Component {
             <Text style={{fontWeight: 'bold'}}>Trimming</Text>
           </View>
         </View>
+
         <GlobalButton
           text={'Done'}
           tick={true}
@@ -225,6 +304,8 @@ class EditVideo extends React.Component {
           }}
           resizeMode="stretch"
         />
+
+
 
         <Toast
           ref="toast"
